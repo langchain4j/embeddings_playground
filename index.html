@@ -4,6 +4,18 @@
     <title>Embeddings Playground</title>
 </head>
 <body>
+This playground visualizes how words in the provided passage contribute (and to what extent) to the cosine similarity with a provided query, using a specific model.
+<br>
+Embedding is performed directly in your browser, thanks to <a href="https://xenova.github.io/transformers.js/">transformers.js</a>.
+<br>
+The "Model" dropdown menu includes several popular models, but you can choose from a broader range of embedding models listed <a href="https://huggingface.co/Xenova">here</a> under "Models" section.
+<br>
+Model leaderboard can be found <a href="https://huggingface.co/spaces/mteb/leaderboard">here</a>.
+<br>
+P.S.: It might take a few minutes the first time you select a model, but it will be cached for quicker access in subsequent uses.
+<br>
+Enjoy!
+<hr>
 Passage:
 <br>
 <textarea id="passage" rows="10" cols="150"></textarea>
@@ -13,14 +25,11 @@ Query:
 <textarea id="query" rows="5" cols="150"></textarea>
 <br>
 Model:
-<input id="model" type="text" list="models" /> <a href="https://huggingface.co/spaces/mteb/leaderboard">Leaderboard</a> <a href="https://huggingface.co/Xenova">More models</a>
+<input id="model" type="text" list="models" />
 <datalist id="models">
   <option>Xenova/all-MiniLM-L6-v2</option>
   <option>Xenova/bge-small-en-v1.5</option>
-  <option>Xenova/bge-base-en-v1.5</option>
-  <option>Xenova/bge-large-en-v1.5</option>
   <option>Xenova/e5-small-v2</option>
-  <option>Xenova/UAE-Large-V1</option>
 </datalist>
 <br>
 <br>
