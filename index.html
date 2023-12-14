@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Embeddings Playground</title>
+</head>
+<body>
+Passage:
+<br>
+<textarea id="passage" rows="10" cols="150"></textarea>
+<br>
+Query:
+<br>
+<textarea id="query" rows="5" cols="150"></textarea>
+<br>
+Model:
+<input id="model" type="text" list="models" /> <a href="https://huggingface.co/spaces/mteb/leaderboard">Leaderboard</a> <a href="https://huggingface.co/Xenova">More models</a>
+<datalist id="models">
+  <option>Xenova/all-MiniLM-L6-v2</option>
+  <option>Xenova/bge-small-en-v1.5</option>
+  <option>Xenova/bge-base-en-v1.5</option>
+  <option>Xenova/bge-large-en-v1.5</option>
+  <option>Xenova/e5-small-v2</option>
+  <option>Xenova/UAE-Large-V1</option>
+</datalist>
+<br>
+<br>
+<button id="calculateButton">Calculate</button>
+<progress id="progressBar" value="0" max="100"></progress>
+<hr>
+<div id="similarity"></div>
+<br>
+<div id="coloredWords" background-color="gray"></div>
+<br>
+<div id="contributionTable"></div>
+
+<script type="module">
+import * as transformers from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.11.0';
+
+document.getElementById("calculateButton").addEventListener("click", function() {
+    setTimeout(calculateSimilarity, 0);
+});
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function calculateSimilarity() {
+    let progressBar = document.getElementById("progressBar");
+    progressBar.value = 0;
+
+    let passage = document.getElementById("passage").value;
+    let query = document.getElementById("query").value;
+    let model = document.getElementById("model").value;
+
+    let embedder = await transformers.pipeline('feature-extraction', model);
+
+	let passageEmbedding = await embedder(passage, { pooling: 'mean', normalize: true });
+    let queryEmbedding = await embedder(query, { pooling: 'mean', normalize: true });
+
+    let baseSimilarity = dot(passageEmbedding.data, queryEmbedding.data);
+
+    let words = [];
+    let regex = /\b\w+\b/g;
+    let match;
+    while ((match = regex.exec(passage)) !== null) {
+        words.push({ word: match[0], index: match.index });
+    }
+
+    let contributions = [];
+
+    for (const [_, { word, index }] of words.entries()) {
+
+        let passageWithoutWord = passage.slice(0, index) + passage.slice(index + word.length);
+        console.log("Passage without '" + word + "': " + passageWithoutWord)
+
+        let passageWithoutWordEmbedding = await embedder(passageWithoutWord, { pooling: 'mean', normalize: true });
+        let similarity = dot(passageWithoutWordEmbedding.data, queryEmbedding.data);
+        contributions.push({word, contribution: baseSimilarity - similarity});
+
+        progressBar.value = ((_ + 1) / words.length) * 100;
+        await sleep(1);
+    }
+
+    contributions.sort((a, b) => b.contribution - a.contribution);
+
+    let coloredWords = words.map(({ word }) => {
+        let contributionObj = contributions.find(w => w.word === word);
+        let intensity = Math.min((contributionObj.contribution * 255), 255).toFixed(0);
+		console.log(contributionObj.contribution);
+		console.log(intensity);
+        return `<span style="background-color: rgba(255, 0, 0, ${3 * intensity / 255})">${word}</span>`;
+    }).join(" ");
+
+    document.getElementById("similarity").innerHTML = `Similarity: ${baseSimilarity.toFixed(3)} <progress value="${baseSimilarity.toFixed(3)}" max="1"></progress>`;
+    document.getElementById("coloredWords").innerHTML = `Passage: ${coloredWords}`;
+
+    let tableContent = contributions.map(contribution => {
+    return `<tr>
+                <td>${contribution.word}</td>
+				<td>${contribution.contribution.toFixed(3)} <progress value="${contribution.contribution.toFixed(3)}" max="1"></progress></td>
+            </tr>`;
+    }).join("");
+    document.getElementById("contributionTable").innerHTML = `<table border="1"><thead><tr><th>Word</th><th>Contribution</th></tr></thead><tbody>` + tableContent + `</tbody></table>`;
+}
+
+function dot(a, b) {
+    return a.reduce((sum, aVal, idx) => sum + (aVal * b[idx]), 0);
+}
+</script>
+</body>
+</html>
