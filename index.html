@@ -4,15 +4,18 @@
     <title>Embeddings Playground</title>
 </head>
 <body>
-This playground visualizes how words in the provided passage contribute (and to what extent) to the cosine similarity with a provided query, using a specific model.
+This playground visualizes how words in the provided passage contribute (and to what extent) to the cosine similarity
+with a provided query, using a specific model.
 <br>
 Embedding is performed directly in your browser, thanks to <a href="https://xenova.github.io/transformers.js/">transformers.js</a>.
 <br>
-The "Model" dropdown menu includes several popular models, but you can choose from a broader range of embedding models listed <a href="https://huggingface.co/Xenova">here</a> under "Models" section.
+The "Model" dropdown menu includes several popular models, but you can choose from a broader range of embedding models
+listed <a href="https://huggingface.co/Xenova">here</a> under "Models" section.
 <br>
 Model leaderboard can be found <a href="https://huggingface.co/spaces/mteb/leaderboard">here</a>.
 <br>
-P.S.: It might take a few minutes the first time you select a model, but it will be cached for quicker access in subsequent uses.
+P.S.: It might take a few minutes the first time you select a model, but it will be cached for quicker access in
+subsequent uses.
 <br>
 Enjoy!
 <hr>
@@ -27,9 +30,9 @@ Query:
 Model:
 <input id="model" type="text" list="models">
 <datalist id="models">
-  <option>Xenova/all-MiniLM-L6-v2</option>
-  <option>Xenova/bge-small-en-v1.5</option>
-  <option>Xenova/e5-small-v2</option>
+    <option>Xenova/all-MiniLM-L6-v2</option>
+    <option>Xenova/bge-small-en-v1.5</option>
+    <option>Xenova/e5-small-v2</option>
 </datalist>
 <br>
 <br>
@@ -37,13 +40,17 @@ Model:
 <progress id="progressBar" value="0" max="100"></progress>
 <hr>
 <div id="similarity"></div>
+<hr>
 <br>
 <div id="coloredWords" background-color="gray"></div>
 <br>
 <div id="contributionTable"></div>
+<hr>
+<table id="matrixTable"></table>
 
 <script type="module">
 import * as transformers from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.11.0';
+import { AutoTokenizer } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.11.0';
 
 document.getElementById("calculateButton").addEventListener("click", function() {
     setTimeout(calculateSimilarity, 0);
@@ -67,6 +74,46 @@ async function calculateSimilarity() {
     let queryEmbedding = await embedder(query, { pooling: 'mean', normalize: true });
 
     let baseSimilarity = dot(passageEmbedding.data, queryEmbedding.data);
+    document.getElementById("similarity").innerHTML = `Similarity: ${baseSimilarity.toFixed(3)} <progress value="${baseSimilarity.toFixed(3)}" max="1"></progress>`;
+
+	let passageEmbeddings = await embedder(passage, { normalize: true });
+    let queryEmbeddings = await embedder(query, { normalize: true });
+    let l = passageEmbeddings.dims[2];
+
+    let tokenizer = await AutoTokenizer.from_pretrained(model);
+    let passageIds = await tokenizer.encode(passage);
+    let passageTokens = tokenizer.model.convert_ids_to_tokens(passageIds)
+    let queryIds = await tokenizer.encode(query);
+    let queryTokens = tokenizer.model.convert_ids_to_tokens(queryIds)
+
+    let matrixTable = document.getElementById("matrixTable");
+    matrixTable.innerHTML = '';
+    let firstRow = matrixTable.insertRow();
+    firstRow.insertCell()
+    for (let w = 1; w < queryTokens.length - 1; w += 1) {
+        let c1 = firstRow.insertCell();
+        c1.innerText = queryTokens[w];
+    }
+
+    for (let p = 1; p < passageEmbeddings.dims[1] - 1; p += 1) {
+        let row = matrixTable.insertRow();
+
+        let c2 = row.insertCell();
+        c2.innerText = passageTokens[p];
+
+        let passageEmbedding = passageEmbeddings.data.slice(p * l, p * l + l)
+        for (let q = 1; q < queryEmbeddings.dims[1] - 1; q += 1) {
+            let queryEmbedding = queryEmbeddings.data.slice(q * l, q * l + l)
+            let dotProduct = dot(passageEmbedding, queryEmbedding);
+            console.log(dotProduct)
+            let cell = row.insertCell();
+            cell.style.width = '20px';
+            cell.style.height = '20px';
+            cell.style.padding = '5px';
+            cell.style.backgroundColor = getColorForDotProduct(dotProduct);
+        }
+    }
+    document.body.appendChild(matrixTable);
 
     let words = [];
     let regex = /\b\w+\b/g;
@@ -100,7 +147,6 @@ async function calculateSimilarity() {
         return `<span style="background-color: rgba(255, 0, 0, ${3 * intensity / 255})">${word}</span>`;
     }).join(" ");
 
-    document.getElementById("similarity").innerHTML = `Similarity: ${baseSimilarity.toFixed(3)} <progress value="${baseSimilarity.toFixed(3)}" max="1"></progress>`;
     document.getElementById("coloredWords").innerHTML = `Passage: ${coloredWords}`;
 
     let tableContent = contributions.map(contribution => {
@@ -115,6 +161,14 @@ async function calculateSimilarity() {
 function dot(a, b) {
     return a.reduce((sum, aVal, idx) => sum + (aVal * b[idx]), 0);
 }
+
+function getColorForDotProduct(value) {
+    let intensity = Math.min(1, Math.abs(value)); // Normalize the value between 0 and 1
+    let colorIntensity = Math.floor(255 * intensity);
+    let inverseColorIntensity = 255 - colorIntensity;
+    return `rgb(${inverseColorIntensity}, ${inverseColorIntensity}, ${inverseColorIntensity})`;
+}
+
 </script>
 </body>
 </html>
