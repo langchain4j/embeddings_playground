@@ -46,6 +46,7 @@ Model:
 <br>
 <div id="contributionTable"></div>
 <hr>
+<h4>Token-level similarity heatmap</h4>
 <table id="matrixTable"></table>
 
 <script type="module">
@@ -74,7 +75,7 @@ async function calculateSimilarity() {
     let queryEmbedding = await embedder(query, { pooling: 'mean', normalize: true });
 
     let baseSimilarity = dot(passageEmbedding.data, queryEmbedding.data);
-    document.getElementById("similarity").innerHTML = `Similarity: ${baseSimilarity.toFixed(3)} <progress value="${baseSimilarity.toFixed(3)}" max="1"></progress>`;
+    document.getElementById("similarity").innerHTML = `Cosine similarity: ${baseSimilarity.toFixed(3)} <progress value="${baseSimilarity.toFixed(3)}" max="1"></progress>`;
 
 	let passageEmbeddings = await embedder(passage, { normalize: true });
     let queryEmbeddings = await embedder(query, { normalize: true });
@@ -147,7 +148,7 @@ async function calculateSimilarity() {
         return `<span style="background-color: rgba(255, 0, 0, ${3 * intensity / 255})">${word}</span>`;
     }).join(" ");
 
-    document.getElementById("coloredWords").innerHTML = `Passage: ${coloredWords}`;
+    document.getElementById("coloredWords").innerHTML = `${coloredWords}`;
 
     let tableContent = contributions.map(contribution => {
     return `<tr>
